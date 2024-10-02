@@ -1,8 +1,7 @@
-from typing import Union
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from aiogoogle import Aiogoogle
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.db import get_async_session
 from app.core.google_client import get_service
@@ -17,7 +16,7 @@ router = APIRouter()
 
 @router.post(
     '/',
-    response_model=list[dict[str, Union[str, float]]],
+    response_model=str,
     dependencies=[Depends(current_superuser)],
 )
 async def get_report(
@@ -32,9 +31,18 @@ async def get_report(
     """
     closed_projects = await (project_crud
                              .get_projects_by_completion_rate(session))
-    spreadsheet_id = await spreadsheets_create(wrapper_services)
-    await set_user_permissions(spreadsheet_id, wrapper_services)
-    await spreadsheets_update_value(
-        spreadsheet_id, closed_projects, wrapper_services
-    )
-    return closed_projects
+    try:
+        spreadsheet_id, spreadsheet_url = await spreadsheets_create(
+            wrapper_services
+        )
+        await set_user_permissions(spreadsheet_id, wrapper_services)
+        await spreadsheets_update_value(
+            spreadsheet_id, closed_projects, wrapper_services
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ошибка при работе с Google Sheets: {str(e)}"
+        )
+
+    return spreadsheet_url
