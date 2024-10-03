@@ -12,3 +12,4 @@ FORMAT = "%Y/%m/%d %H:%M:%S"
 
 MAX_ROWS = 100
 MAX_COLUMNS = 11
+SPREADSHEET_URL = 'https://docs.google.com/spreadsheets/d/'

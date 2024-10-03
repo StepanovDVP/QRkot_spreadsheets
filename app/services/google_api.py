@@ -7,7 +7,11 @@ from aiogoogle import Aiogoogle
 from app.core.config import settings
 from app.constants import (
     SECONDS_OF_ONE_DAY, SECONDS_OF_HOUR,
-    MINUTES_OF_HOUR, FORMAT, MAX_ROWS, MAX_COLUMNS
+    MINUTES_OF_HOUR, FORMAT, MAX_ROWS, MAX_COLUMNS,
+    SPREADSHEET_URL
+)
+from app.exceptions import (
+    MaxColumnsExceededError, MaxRowsExceededError
 )
 
 BASE_TABLE_VALUES = [
@@ -80,15 +84,16 @@ async def spreadsheets_update_value(
     total_rows = len(table_values)
 
     if total_rows > MAX_ROWS:
-        raise ValueError(
-            f"Превышено максимальное количество строк ({MAX_ROWS}). "
-            f"Текущие строки: {total_rows}."
+        raise MaxRowsExceededError(
+            f"Превышено максимальное количество строк "
+            f"({MAX_ROWS}). Текущие строки: {total_rows}."
         )
+
     for row in table_values:
         if len(row) > MAX_COLUMNS:
-            raise ValueError(
-                f"Превышено максимальное количество столбцов ({MAX_COLUMNS}) "
-                f"в строке: {row}."
+            raise MaxColumnsExceededError(
+                f"Превышено максимальное количество столбцов "
+                f"({MAX_COLUMNS}) в строке: {row}."
             )
 
     update_body = {
@@ -117,8 +122,7 @@ async def spreadsheets_create(wrapper_services: Aiogoogle) -> tuple:
         service.spreadsheets.create(json=spreadsheet_body)
     )
     spreadsheet_id = response['spreadsheetId']
-    spreadsheet_url = (f'https://docs.google.com/spreadsheets/d/'
-                       f'{spreadsheet_id}')
+    spreadsheet_url = SPREADSHEET_URL + spreadsheet_id
 
     return spreadsheet_id, spreadsheet_url
 

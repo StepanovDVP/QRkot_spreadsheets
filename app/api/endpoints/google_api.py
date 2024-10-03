@@ -10,6 +10,9 @@ from app.crud.charity_project import project_crud
 from app.services.google_api import (
     spreadsheets_create, set_user_permissions, spreadsheets_update_value
 )
+from app.exceptions import (
+    MaxColumnsExceededError, MaxRowsExceededError
+)
 
 router = APIRouter()
 
@@ -29,17 +32,18 @@ async def get_report(
     Сформировать в гугл-таблице.
     Только для суперюзеров.
     """
-    closed_projects = await (project_crud
-                             .get_projects_by_completion_rate(session))
+    closed_projects = await (
+        project_crud.get_projects_by_completion_rate(session)
+    )
+    spreadsheet_id, spreadsheet_url = await spreadsheets_create(
+        wrapper_services
+    )
+    await set_user_permissions(spreadsheet_id, wrapper_services)
     try:
-        spreadsheet_id, spreadsheet_url = await spreadsheets_create(
-            wrapper_services
-        )
-        await set_user_permissions(spreadsheet_id, wrapper_services)
         await spreadsheets_update_value(
             spreadsheet_id, closed_projects, wrapper_services
         )
-    except Exception as e:
+    except (MaxColumnsExceededError, MaxRowsExceededError) as e:
         raise HTTPException(
             status_code=500,
             detail=f"Ошибка при работе с Google Sheets: {str(e)}"
